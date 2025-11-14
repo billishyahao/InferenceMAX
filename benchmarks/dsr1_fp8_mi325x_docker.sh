@@ -14,6 +14,8 @@
 
 export SGLANG_USE_AITER=1
 
+SERVER_LOG=$(mktemp /tmp/server-XXXXXX.log)
+
 python3 -m sglang.launch_server \
     --model-path $MODEL \
     --host=0.0.0.0 \
@@ -24,5 +26,27 @@ python3 -m sglang.launch_server \
     --mem-fraction-static 0.8 --disable-radix-cache \
     --num-continuous-decode-steps 4 \
     --max-prefill-tokens 196608 \
-    --cuda-graph-max-bs 128
+    --cuda-graph-max-bs 128 > $SERVER_LOG 2>&1 &
+
+# Show logs until server is ready
+tail -f $SERVER_LOG &
+TAIL_PID=$!
+set +x
+until curl --output /dev/null --silent --fail http://0.0.0.0:$PORT/health; do
+    sleep 5
+done
+kill $TAIL_PID
+
+set -x
+BENCH_SERVING_DIR=$(mktemp -d /tmp/bmk-XXXXXX)
+git clone https://github.com/kimbochen/bench_serving.git $BENCH_SERVING_DIR
+python3 $BENCH_SERVING_DIR/benchmark_serving.py \
+--model=$MODEL --backend=vllm --base-url=http://0.0.0.0:$PORT \
+--dataset-name=random \
+--random-input-len=$ISL --random-output-len=$OSL --random-range-ratio=$RANDOM_RANGE_RATIO \
+--num-prompts=$(( $CONC * 10 )) \
+--max-concurrency=$CONC \
+--request-rate=inf --ignore-eos \
+--save-result --percentile-metrics="ttft,tpot,itl,e2el" \
+--result-dir=/workspace/ --result-filename=$RESULT_FILENAME.json
     
