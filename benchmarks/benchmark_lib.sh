@@ -75,7 +75,7 @@ wait_for_server_ready() {
 # Parameters:
 #   --model: Model name
 #   --port: Server port
-#   --backend: Backend type - 'vllm' or 'openai'
+#   --backend: Backend type - e.g., 'vllm' or 'openai'
 #   --input-len: Random input sequence length
 #   --output-len: Random output sequence length
 #   --random-range-ratio: Random range ratio
