@@ -2,7 +2,10 @@ name: "Debug Test"
 
 on:
     workflow_dispatch:
-    pull_request:
+    # pull_request:
+    # push:
+    #     branches: [multinode-firstclass] 
+        
 
 jobs:
     get-dsr1-configs:
