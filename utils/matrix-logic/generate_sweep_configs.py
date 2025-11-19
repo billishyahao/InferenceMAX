@@ -109,7 +109,7 @@ class MultinodeMatrixEntry(BaseModel):
     conc: int
     max_model_len: int = Field(alias='max-model-len')
     exp_name: str = Field(alias='exp-name')
-    additional_settings: Optional[List[dict]] = Field(default=None, alias='additional-settings')
+    additional_settings: Optional[List[str]] = Field(default=None, alias='additional-settings')
 
 
 def validate_matrix_output(matrix_values: List[dict]) -> List[dict]:
@@ -280,9 +280,9 @@ def validate_master_configs_structure(all_config_data):
                         if not isinstance(bmk[FIELD_ADDITIONAL_SETTINGS], list):
                             raise ValueError(f"'{FIELD_ADDITIONAL_SETTINGS}' must be list in {location}")
                         for setting in bmk[FIELD_ADDITIONAL_SETTINGS]:
-                            if not isinstance(setting, dict):
+                            if not isinstance(setting, str):
                                 raise ValueError(
-                                    f"Each item in '{FIELD_ADDITIONAL_SETTINGS}' must be dict in {location}"
+                                    f"Each item in '{FIELD_ADDITIONAL_SETTINGS}' must be str in {location}"
                                 )
                 else:
                     # Validate single node configuration

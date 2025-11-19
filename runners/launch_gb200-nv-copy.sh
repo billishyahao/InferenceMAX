@@ -103,6 +103,7 @@ if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
     gen_nodes=$(((DECODE_TP + 3)/4 * DECODE_NUM_WORKERS))
     total_nodes=$((PREFILL_NUM_WORKERS + gen_nodes))
     total_tasks=$((total_nodes * ntasks_per_node))
+
     # 4608 prefill max num toks originally
     if [ $ISL == $OSL ]; then
         sbatch --nodes=${total_nodes} \
@@ -123,7 +124,7 @@ if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
     # else
     #     sbatch --nodes=${total_nodes} --ntasks=${total_tasks} --ntasks-per-node=${ntasks_per_node} --segment=${total_nodes} ${slurm_args} benchmark_disagg.slurm ${ctx_num} 4 1 8448 true ${gen_num} ${gen_tp_size} ${gen_batch_size} ${gen_max_num_tokens} ${gen_enable_attention_dp} ${gen_gpu_memory_fraction} ${gen_eplb_num_slots} ${gen_mtp_size} "${gen_concurrency_list}" ${gen_nodes} ${kind} ${MODEL_PATH} ${SERVED_MODEL_NAME} ${IMAGE} ${ISL} ${OSL}
     fi
-    set +x
+    # set +x
 
 
 #     # Generate benchmark configurations based on ISL/OSL and MTP mode
