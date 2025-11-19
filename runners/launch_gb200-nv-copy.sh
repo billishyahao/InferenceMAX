@@ -103,12 +103,12 @@ if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
     gen_nodes=$(((DECODE_TP + 3)/4 * DECODE_NUM_WORKERS))
     total_nodes=$((PREFILL_NUM_WORKERS + gen_nodes))
     total_tasks=$((total_nodes * ntasks_per_node))
+    # 4608 prefill max num toks originally
     if [ $ISL == $OSL ]; then
         sbatch --nodes=${total_nodes} \
             --ntasks=${total_tasks} \
             --ntasks-per-node=${ntasks_per_node} \
             --segment=${total_nodes} ${additional_slurm_args} \
-            # 4608 prefill max num toks originally
             benchmark_disagg.slurm \
             ${PREFILL_NUM_WORKERS} ${PREFILL_TP} \
             ${PREFILL_BATCH_SIZE} ${PREFILL_MAX_NUM_TOKENS} \
