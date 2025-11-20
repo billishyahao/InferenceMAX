@@ -107,6 +107,7 @@ if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
     total_nodes=$((PREFILL_NUM_WORKERS + gen_nodes))
     total_tasks=$((total_nodes * ntasks_per_node))
 
+    set +x
     # 4608 prefill max num toks originally
     if [ $ISL == $OSL ]; then
         job_output=$(sbatch --nodes=${total_nodes} \
@@ -137,7 +138,6 @@ while [ ! -f "$slurm_out" ]; do sleep 1; done
 
 tail -f "$slurm_out" &
 tail_pid=$!
-
 
 # Wait for all jobs to complete
 # echo "Waiting for all jobs to complete..."
