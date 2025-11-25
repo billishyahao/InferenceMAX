@@ -822,7 +822,8 @@ dsr1-fp8-gb200-dynamo-sglang:
     osl: 1024
     search-space:
     - spec-decoding: "none"
-      conc-list: [ 128, 256, 384, 448, 512, 576, 1024, 2048, 4096 ]
+      # conc-list: [ 128, 256, 384, 448, 512, 576, 1024, 2048, 4096 ]
+      conc-list: [ 128 ]
       prefill:
         num-worker: 6
         # tp, ep, and dp-attn do nothing because they are hardcoded in the following file:
