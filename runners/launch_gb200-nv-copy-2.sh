@@ -46,7 +46,7 @@ done
 # depend on the runner, it should always be in the same spot in the GH workspace.
 
 # Process results from all configurations
-if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
+if [[ $FRAMEWORK == "dynamo-trt" ]]; then
 
     # Find the logs directory (should be only one for this ISL/OSL combination)
     LOGS_DIR=$(find . -name "dynamo_disagg-bm-${ISL}-${OSL}" -type d | head -1)
