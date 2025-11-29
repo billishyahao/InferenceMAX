@@ -45,7 +45,10 @@ on:
         required: false
         type: string
         default: '0.8'
-
+      run-eval:
+        type: boolean
+        required: false
+        default: false
 env:
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
   HF_HUB_CACHE: '/mnt/hf_hub_cache/'
@@ -62,6 +65,7 @@ env:
   EP_SIZE: ${{ inputs.ep }}
   DP_ATTENTION: ${{ inputs.dp-attn }}
   CONC: ${{ inputs.conc }}
+  RUN_EVAL: ${{ inputs.run-eval }}
 
 permissions:
   contents: read
