@@ -1,5 +1,5 @@
 name: End-to-End Tests
-run-name: e2e Test - ${{ github.event.inputs.generate-cli-command }}
+run-name: e2e Test - ${{ inputs.test-name || github.event.inputs.generate-cli-command }}
 
 on:
     workflow_dispatch:
@@ -7,6 +7,10 @@ on:
             generate-cli-command:
                 description: "Command passed to generate matrix script"
                 required: true
+                type: string
+            test-name:
+                description: "Name for this test run"
+                required: false
                 type: string
 
 jobs:

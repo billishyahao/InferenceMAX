@@ -484,11 +484,13 @@ class TestGenerateRunnerModelSweepConfig:
 
     @pytest.fixture
     def runner_sweep_args(self):
-        """Args for runner-model-sweep command."""
+        """Args for runner-model-sweep command (single-node)."""
         args = argparse.Namespace()
         args.runner_type = "mi300x"
         args.runner_config = "runners.yaml"
         args.runner_node_filter = None
+        args.single_node = True
+        args.multi_node = False
         return args
 
     def test_basic_runner_sweep(self, sample_single_node_config, sample_runner_config, runner_sweep_args):

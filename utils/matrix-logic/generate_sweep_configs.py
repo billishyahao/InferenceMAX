@@ -260,6 +260,12 @@ def generate_runner_model_sweep_config(args, all_config_data, runner_data):
 
         is_multinode = val.get(Fields.MULTINODE.value, False)
 
+        # Skip configs that don't match the requested node type
+        if args.single_node and is_multinode:
+            continue
+        if args.multi_node and not is_multinode:
+            continue
+
         # Get model code for exp_name
         model_code = val[Fields.MODEL_PREFIX.value]
         # Get disagg value, defaulting to False if not specified
@@ -516,6 +522,18 @@ def main():
         '--runner-node-filter',
         required=False,
         help='Filter runner nodes by substring match (e.g., "mi300x-amd" to only include nodes containing that string)'
+    )
+    test_node_group = test_config_parser.add_mutually_exclusive_group(
+        required=True)
+    test_node_group.add_argument(
+        '--single-node',
+        action='store_true',
+        help='Generate single-node configurations only'
+    )
+    test_node_group.add_argument(
+        '--multi-node',
+        action='store_true',
+        help='Generate multi-node configurations only'
     )
     test_config_parser.add_argument(
         '-h', '--help',
