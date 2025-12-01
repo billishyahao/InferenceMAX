@@ -125,10 +125,17 @@ def generate_full_sweep(args, all_config_data, runner_data):
                                 conc = conc_end
 
                     # Apply max-conc filter if specified
+                    # If max_conc is less than all values, use max_conc directly (if valid)
                     if args.max_conc is not None:
-                        conc_values = [c for c in conc_values if c <= args.max_conc]
-                        if not conc_values:
-                            continue  # Skip this bmk if no concurrency values remain
+                        filtered_conc = [c for c in conc_values if c <= args.max_conc]
+                        if not filtered_conc:
+                            # No existing values <= max_conc, so use max_conc directly if valid
+                            if args.max_conc > 0:
+                                conc_values = [args.max_conc]
+                            else:
+                                continue  # Skip if max_conc is not positive
+                        else:
+                            conc_values = filtered_conc
 
                     # For multinode, create a single entry with conc as a list
                     seq_len_str = seq_len_to_str(isl, osl)
@@ -161,18 +168,31 @@ def generate_full_sweep(args, all_config_data, runner_data):
                     spec_decoding = bmk.get(Fields.SPEC_DECODING.value, "none")
 
                     # Apply max-tp filter if specified
-                    if args.max_tp and tp > args.max_tp:
-                        continue
+                    # If tp > max_tp, use max_tp instead of skipping (if valid)
+                    if args.max_tp is not None:
+                        if args.max_tp <= 0:
+                            continue  # Skip if max_tp is not positive
+                        if tp > args.max_tp:
+                            tp = args.max_tp
 
                     # Apply max-ep filter if specified
-                    if args.max_ep and ep is not None and ep > args.max_ep:
-                        continue
+                    # If ep > max_ep, use max_ep instead of skipping (if valid)
+                    if args.max_ep is not None:
+                        if args.max_ep <= 0:
+                            continue  # Skip if max_ep is not positive
+                        if ep is not None and ep > args.max_ep:
+                            ep = args.max_ep
 
                     # Apply max-conc filter if specified
+                    # If conc_start > max_conc, use max_conc as both start and end (if valid)
                     if args.max_conc is not None:
-                        conc_end = min(conc_end, args.max_conc)
-                        if conc_start > conc_end:
-                            continue  # Skip this bmk if conc_start exceeds max_conc
+                        if args.max_conc <= 0:
+                            continue  # Skip if max_conc is not positive
+                        if conc_start > args.max_conc:
+                            conc_start = args.max_conc
+                            conc_end = args.max_conc
+                        else:
+                            conc_end = min(conc_end, args.max_conc)
 
                     conc = conc_start
                     while conc <= conc_end:

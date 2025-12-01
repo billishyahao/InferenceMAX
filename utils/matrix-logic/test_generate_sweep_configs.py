@@ -324,16 +324,67 @@ class TestGenerateFullSweepSingleNode:
         assert len(result) == 3
         assert all(entry["conc"] <= 16 for entry in result)
 
-    def test_max_tp_filter(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
-        """max_tp filter should limit TP values."""
-        full_sweep_args_single_node.max_tp = 4
+    def test_max_conc_creates_config_when_below_min(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
+        """max_conc below config's min should create config with max_conc value."""
+        # Config has conc-start=4, so max_conc=1 should create entry with conc=1
+        full_sweep_args_single_node.max_conc = 1
+        full_sweep_args_single_node.seq_lens = ["1k1k"]
         result = generate_full_sweep(
             full_sweep_args_single_node,
             sample_single_node_config,
             sample_runner_config
         )
-        # tp=8 is filtered out, so no results
-        assert len(result) == 0
+        # Should create 1 entry with conc=1
+        assert len(result) == 1
+        assert result[0]["conc"] == 1
+
+    def test_max_conc_zero_or_negative_skips(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
+        """max_conc of 0 or negative should skip configs."""
+        for invalid_value in [0, -1, -100]:
+            full_sweep_args_single_node.max_conc = invalid_value
+            result = generate_full_sweep(
+                full_sweep_args_single_node,
+                sample_single_node_config,
+                sample_runner_config
+            )
+            assert len(result) == 0, f"Expected 0 results for max_conc={invalid_value}"
+
+    def test_max_tp_filter(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
+        """max_tp filter should use max_tp when config tp exceeds it."""
+        full_sweep_args_single_node.max_tp = 4
+        full_sweep_args_single_node.seq_lens = ["1k1k"]
+        result = generate_full_sweep(
+            full_sweep_args_single_node,
+            sample_single_node_config,
+            sample_runner_config
+        )
+        # tp=8 in config, but max_tp=4, so should use tp=4
+        assert len(result) > 0
+        assert all(entry["tp"] == 4 for entry in result)
+
+    def test_max_tp_creates_config_when_below_min(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
+        """max_tp below config's tp should create config with max_tp value."""
+        # Config has tp=8, so max_tp=2 should create entries with tp=2
+        full_sweep_args_single_node.max_tp = 2
+        full_sweep_args_single_node.seq_lens = ["1k1k"]
+        result = generate_full_sweep(
+            full_sweep_args_single_node,
+            sample_single_node_config,
+            sample_runner_config
+        )
+        assert len(result) > 0
+        assert all(entry["tp"] == 2 for entry in result)
+
+    def test_max_tp_zero_or_negative_skips(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
+        """max_tp of 0 or negative should skip configs."""
+        for invalid_value in [0, -1, -100]:
+            full_sweep_args_single_node.max_tp = invalid_value
+            result = generate_full_sweep(
+                full_sweep_args_single_node,
+                sample_single_node_config,
+                sample_runner_config
+            )
+            assert len(result) == 0, f"Expected 0 results for max_tp={invalid_value}"
 
     def test_step_size(self, sample_single_node_config, sample_runner_config, full_sweep_args_single_node):
         """Different step sizes should affect concurrency progression."""
@@ -789,3 +840,193 @@ class TestEdgeCases:
         assert len(result) == 1
         # step_size=2: 1, 2, 4, 8
         assert result[0]["conc"] == [1, 2, 4, 8]
+
+    def test_max_ep_creates_config_when_below_min(self, sample_runner_config, full_sweep_args_single_node):
+        """max_ep below config's ep should create config with max_ep value."""
+        config = {
+            "test-config": {
+                "image": "test-image",
+                "model": "test-model",
+                "model-prefix": "test",
+                "precision": "fp4",
+                "framework": "sglang",
+                "runner": "b200",
+                "multinode": False,
+                "seq-len-configs": [
+                    {
+                        "isl": 1024,
+                        "osl": 1024,
+                        "search-space": [
+                            {"tp": 8, "ep": 8, "conc-start": 4, "conc-end": 4}
+                        ]
+                    }
+                ]
+            }
+        }
+        full_sweep_args_single_node.max_ep = 2
+        result = generate_full_sweep(
+            full_sweep_args_single_node,
+            config,
+            sample_runner_config
+        )
+        # ep=8 in config, but max_ep=2, so should use ep=2
+        assert len(result) == 1
+        assert result[0]["ep"] == 2
+
+    def test_max_ep_zero_or_negative_skips(self, sample_runner_config, full_sweep_args_single_node):
+        """max_ep of 0 or negative should skip configs."""
+        config = {
+            "test-config": {
+                "image": "test-image",
+                "model": "test-model",
+                "model-prefix": "test",
+                "precision": "fp4",
+                "framework": "sglang",
+                "runner": "b200",
+                "multinode": False,
+                "seq-len-configs": [
+                    {
+                        "isl": 1024,
+                        "osl": 1024,
+                        "search-space": [
+                            {"tp": 8, "ep": 8, "conc-start": 4, "conc-end": 4}
+                        ]
+                    }
+                ]
+            }
+        }
+        for invalid_value in [0, -1, -100]:
+            full_sweep_args_single_node.max_ep = invalid_value
+            result = generate_full_sweep(
+                full_sweep_args_single_node,
+                config,
+                sample_runner_config
+            )
+            assert len(result) == 0, f"Expected 0 results for max_ep={invalid_value}"
+
+    def test_multinode_max_conc_zero_or_negative_skips(self, sample_runner_config, full_sweep_args_multi_node):
+        """Multinode max_conc of 0 or negative should skip configs."""
+        config = {
+            "test-config": {
+                "image": "test-image",
+                "model": "test-model",
+                "model-prefix": "test",
+                "precision": "fp4",
+                "framework": "dynamo-trt",
+                "runner": "gb200",
+                "multinode": True,
+                "seq-len-configs": [
+                    {
+                        "isl": 1024,
+                        "osl": 1024,
+                        "search-space": [
+                            {
+                                "conc-list": [100, 200, 400],
+                                "prefill": {
+                                    "num-worker": 1,
+                                    "tp": 4,
+                                    "ep": 4,
+                                    "dp-attn": False,
+                                },
+                                "decode": {
+                                    "num-worker": 1,
+                                    "tp": 8,
+                                    "ep": 8,
+                                    "dp-attn": False,
+                                },
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+        for invalid_value in [0, -1, -100]:
+            full_sweep_args_multi_node.max_conc = invalid_value
+            result = generate_full_sweep(
+                full_sweep_args_multi_node,
+                config,
+                sample_runner_config
+            )
+            assert len(result) == 0, f"Expected 0 results for max_conc={invalid_value}"
+
+    def test_multinode_max_conc_creates_config_when_below_min(self, sample_runner_config, full_sweep_args_multi_node):
+        """Multinode max_conc below all values should create config with max_conc."""
+        config = {
+            "test-config": {
+                "image": "test-image",
+                "model": "test-model",
+                "model-prefix": "test",
+                "precision": "fp4",
+                "framework": "dynamo-trt",
+                "runner": "gb200",
+                "multinode": True,
+                "seq-len-configs": [
+                    {
+                        "isl": 1024,
+                        "osl": 1024,
+                        "search-space": [
+                            {
+                                "conc-list": [100, 200, 400],
+                                "prefill": {
+                                    "num-worker": 1,
+                                    "tp": 4,
+                                    "ep": 4,
+                                    "dp-attn": False,
+                                },
+                                "decode": {
+                                    "num-worker": 1,
+                                    "tp": 8,
+                                    "ep": 8,
+                                    "dp-attn": False,
+                                },
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+        full_sweep_args_multi_node.max_conc = 1
+        result = generate_full_sweep(
+            full_sweep_args_multi_node,
+            config,
+            sample_runner_config
+        )
+        # All conc values (100, 200, 400) > max_conc (1), so should use [1]
+        assert len(result) == 1
+        assert result[0]["conc"] == [1]
+
+    def test_combined_max_filters(self, sample_runner_config, full_sweep_args_single_node):
+        """Multiple max filters should all apply and create configs with max values."""
+        config = {
+            "test-config": {
+                "image": "test-image",
+                "model": "test-model",
+                "model-prefix": "test",
+                "precision": "fp4",
+                "framework": "sglang",
+                "runner": "b200",
+                "multinode": False,
+                "seq-len-configs": [
+                    {
+                        "isl": 1024,
+                        "osl": 1024,
+                        "search-space": [
+                            {"tp": 8, "ep": 8, "conc-start": 100, "conc-end": 200}
+                        ]
+                    }
+                ]
+            }
+        }
+        full_sweep_args_single_node.max_tp = 2
+        full_sweep_args_single_node.max_ep = 1
+        full_sweep_args_single_node.max_conc = 1
+        result = generate_full_sweep(
+            full_sweep_args_single_node,
+            config,
+            sample_runner_config
+        )
+        # All values exceed max, so should use max values
+        assert len(result) == 1
+        assert result[0]["tp"] == 2
+        assert result[0]["ep"] == 1
+        assert result[0]["conc"] == 1
