@@ -21,7 +21,10 @@ jobs:
             - id: get-jobs
               run: |
                   pip install pydantic
-                  CONFIG_JSON=$(python3 ${GITHUB_WORKSPACE}/utils/matrix-logic/generate_sweep_configs.py ${{ inputs.generate-cli-command }})
+                  CONFIG_JSON=$(python3 ${GITHUB_WORKSPACE}/utils/matrix-logic/generate_sweep_configs.py\
+                    --runner-config .github/configs/runners.yaml \
+                    --config-files .github/configs/nvidia-master.yaml .github/configs/amd-master.yaml \
+                    ${{ inputs.generate-cli-command }})
                   echo "search-space-config=$CONFIG_JSON" >> $GITHUB_OUTPUT
 
     test:
@@ -63,7 +66,7 @@ jobs:
         needs: get-jobs
         if: ${{ needs.get-jobs.outputs.search-space-config != '[]' && fromJson(needs.get-jobs.outputs.search-space-config)[0].prefill != null }}
         uses: ./.github/workflows/benchmark-multinode-tmpl.yml
-        name: ${{ inputs.generate-cli-command }} multi-node /
+        name: ${{ inputs.generate-cli-command }} multi-node
         strategy:
             fail-fast: false
             matrix:
@@ -99,7 +102,7 @@ jobs:
         needs: get-jobs
         if: ${{ needs.get-jobs.outputs.search-space-config != '[]' && fromJson(needs.get-jobs.outputs.search-space-config)[0].prefill == null }}
         uses: ./.github/workflows/benchmark-tmpl.yml
-        name: ${{ inputs.generate-cli-command }} single-node /
+        name: ${{ inputs.generate-cli-command }} single-node
         strategy:
             fail-fast: false
             matrix:
