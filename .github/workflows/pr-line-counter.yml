@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - 'utils/matrix-logic/**'
+      - 'utils/matrix-logic/generate_sweep_configs.py'
 
 permissions:
   contents: read
