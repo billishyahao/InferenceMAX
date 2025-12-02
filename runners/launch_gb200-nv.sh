@@ -126,14 +126,7 @@ for path in sorted([f"{sgl_job_dir}/logs/{name}/vllm_isl_{isl}_osl_{osl}" for na
     print(path)
 PY
 
-    # This isn't ideal but for now, this is needed for the collect_latest_results.py script
-    if [ "$ISL" = "1024" ] && [ "$OSL" = "1024" ]; then
-        NUMBER_OF_EXPERIMENTS=3
-    else
-        NUMBER_OF_EXPERIMENTS=1
-    fi
-
-    LOGS_DIR=$(python3 collect_latest_results.py "$SGL_SLURM_JOBS_PATH" $ISL $OSL $NUMBER_OF_EXPERIMENTS)
+    LOGS_DIR=$(python3 collect_latest_results.py "$SGL_SLURM_JOBS_PATH" $ISL $OSL 1)
     if [ -z "$LOGS_DIR" ]; then
         echo "No logs directory found for ISL=${ISL}, OSL=${OSL}"
         exit 1
