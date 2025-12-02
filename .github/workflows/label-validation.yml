@@ -53,7 +53,7 @@ jobs:
 
               for label in matching:
                   result = subprocess.run([
-                      'python3', f"{os.environ['GITHUB_WORKSPACE']}/utils/matrix-logic/generate_sweep_configs.py",
+                      'python3', f"{os.environ['GITHUB_WORKSPACE']}/utils/matrix_logic/generate_sweep_configs.py",
                       'full-sweep',
                       '--runner-type', label['runner-type'],
                       '--model-prefix', label['model-prefix'],

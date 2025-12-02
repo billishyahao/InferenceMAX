@@ -1,6 +1,6 @@
 # How to Test Workflows
 
-In order to test configurations described in `.github/configs`, the primary workflow file used is `.github/workflows/e2e-tests.yml`. As input, this workflow takes in the CLI arguments for the `utils/matrix-logic/generate_sweep_configs.py` script. The usage for this script is shown below:
+In order to test configurations described in `.github/configs`, the primary workflow file used is `.github/workflows/e2e-tests.yml`. As input, this workflow takes in the CLI arguments for the `utils/matrix_logic/generate_sweep_configs.py` script. The usage for this script is shown below:
 
 ```
 usage: generate_sweep_configs.py [-h] {full-sweep,test-config,runner-model-sweep,runner-sweep,custom} ...

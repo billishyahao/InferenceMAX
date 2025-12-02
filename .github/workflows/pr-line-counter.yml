@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review]
     paths:
-      - 'utils/matrix-logic/generate_sweep_configs.py'
+      - 'utils/matrix_logic/generate_sweep_configs.py'
 
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      TARGET_FILE: utils/matrix-logic/generate_sweep_configs.py
+      TARGET_FILE: utils/matrix_logic/generate_sweep_configs.py
 
     steps:
       - name: Checkout code
