@@ -46,6 +46,7 @@ def base_env_vars():
         "ISL": "1024",
         "OSL": "1024",
         "DISAGG": "false",
+        "MODEL_PREFIX": "dsr1",
     }
 
 
