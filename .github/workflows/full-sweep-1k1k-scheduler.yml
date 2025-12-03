@@ -114,6 +114,15 @@ jobs:
                           "framework": "dynamo-sglang",
                           "mtp": "off",
                       }
+                      # GPTOSS
+                    - {
+                          "image": "nvcr.io#nvidia/ai-dynamo/tensorrtllm-runtime:0.6.1-cuda13",
+                          "model": "openai/gpt-oss-120b",
+                          "model-prefix": "gptoss",
+                          "precision": "fp4",
+                          "framework": "dynamo-trtllm",
+                          "mtp": "off",
+                      }
         secrets: inherit
         with:
             runner: gb200
@@ -136,7 +145,7 @@ jobs:
             exp-name: "dsr1_1k1k"
 
     collect-gptoss-results:
-        needs: benchmark-gptoss
+        needs: [benchmark-gptoss, benchmark-gb200]
         if: ${{ always() }}
         uses: ./.github/workflows/collect-results.yml
         secrets: inherit

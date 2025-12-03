@@ -117,15 +117,26 @@ if [[ $FRAMEWORK == "dynamo-trtllm" ]]; then
         # MODEL-SPECIFIC HOOK: Different benchmark configurations for different models
         if [[ $MODEL == *"gpt-oss"* ]]; then
             # GPT-OSS specific benchmark configurations
-            if [ "$isl" = "8192" ] && [ "$osl" = "1024" ]; then
+            if [ "$isl" = "1024" ] && [ "$osl" = "1024" ]; then
+                
+                    echo "Running 1k/1k MTP=OFF configurations for GPT-OSS"
+                    
+                    ./submit_disagg.sh mtp=off dep 1 2 4 1536 20000 "0.9" 0 0 "3072"
+                    ./submit_disagg.sh mtp=off dep 1 1 2 1280 20000 "0.9" 0 0 "2560"
+                    ./submit_disagg.sh mtp=off dep 1 1 4 512 20000 "0.9" 0 0 "256 512 1024 2048"
+                    ./submit_disagg.sh mtp=off tp 1 1 4 128 20000 "0.9" 0 0 "4 8 16 32 64 128"
+                    ./submit_disagg.sh mtp=off tp 1 1 8 16 20000 "0.9" 0 0 "1 2 4"
+                    
+            elif [ "$isl" = "8192" ] && [ "$osl" = "1024" ]; then
                 
                     echo "Running 8k/1k MTP=OFF configurations for GPT-OSS"
                     
-                    ./submit_disagg.sh mtp=off tp 1 1 1 512 20000 "0.9" 0 0 "128 256 512"
-                    ./submit_disagg.sh mtp=off tp 1 1 2 1024 20000 "0.9" 0 0 "64 128 256"
+                    ./submit_disagg.sh mtp=off tp 1 1 1 1024 20000 "0.9" 0 0 "128 256 384 512 1024"
+                    ./submit_disagg.sh mtp=off tp 1 1 2 256 20000 "0.9" 0 0 "64 128 256"
+                    ./submit_disagg.sh mtp=off dep 1 1 2 256 20000 "0.9" 0 0 "64 128 256"
                     ./submit_disagg.sh mtp=off tep 1 1 2 1024 20000 "0.9" 0 0 "64 256"
-                    ./submit_disagg.sh mtp=off tp 1 1 4 2048 20000 "0.9" 0 0 "8 16 32 64 128"
-                    ./submit_disagg.sh mtp=off tp 1 1 8 2048 20000 "0.9" 0 0 "1 2 4 8 16"
+                    ./submit_disagg.sh mtp=off tp 1 1 4 2048 20000 "0.9" 0 0 "8 16 32 64 128 256"
+                    ./submit_disagg.sh mtp=off tp 1 1 8 32 20000 "0.9" 0 0 "1 2 4 8 16"
             else
                 echo "Unsupported ISL/OSL combination for GPT-OSS: $isl/$osl"
                 exit 1
