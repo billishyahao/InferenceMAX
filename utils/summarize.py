@@ -20,7 +20,7 @@ if single_node_results:
 
     print("## Single-Node Results\n")
     single_node_header = '''\
-| Model | Hardware | Framework | Precision | ISL | OSL | TP | EP | DP Attention | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
+| Model | Served Model | Hardware | Framework | Precision | ISL | OSL | TP | EP | DP Attention | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
 | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
 '''
     print(single_node_header)
@@ -28,6 +28,7 @@ if single_node_results:
     for result in single_node_results:
         print(
             f"| {result['infmax_model_prefix']} "
+            f"| {result['model']} "
             f"| {result['hw'].upper()} "
             f"| {result['framework'].upper()} "
             f"| {result['precision'].upper()} "
@@ -49,12 +50,12 @@ if single_node_results:
     print("\n")
 
 if multinode_results:
-    multinode_results.sort(key=lambda r: (r['model'], r['hw'], r['framework'], r['precision'], r['isl'],
+    multinode_results.sort(key=lambda r: (r['infmax_model_prefix'], r['hw'], r['framework'], r['precision'], r['isl'],
                            r['osl'], r['prefill_tp'], r['prefill_ep'], r['decode_tp'], r['decode_ep'], r['conc']))
 
     print("## Multi-Node Results\n")
     multinode_header = '''\
-| Model | Hardware | Framework | Precision | ISL | OSL | Prefill TP | Prefill EP | Prefill DP Attn | Prefill Workers | Prefill GPUs | Decode TP | Decode EP | Decode DP Attn | Decode Workers | Decode GPUs | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
+| Model | Served Model | Hardware | Framework | Precision | ISL | OSL | Prefill TP | Prefill EP | Prefill DP Attn | Prefill Workers | Prefill GPUs | Decode TP | Decode EP | Decode DP Attn | Decode Workers | Decode GPUs | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
 | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
 '''
     print(multinode_header)
@@ -62,6 +63,7 @@ if multinode_results:
     for result in multinode_results:
         print(
             f"| {result['infmax_model_prefix']} "
+            f"| {result['model']} "
             f"| {result['hw'].upper()} "
             f"| {result['framework'].upper()} "
             f"| {result['precision'].upper()} "
