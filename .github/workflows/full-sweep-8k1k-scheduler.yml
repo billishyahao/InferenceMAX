@@ -51,7 +51,7 @@ jobs:
         with:
             isl: 8192
             osl: 1024
-            max-model-len: 2048
+            max-model-len: 9416
             runner: ${{ matrix.config.runner }}
             image: ${{ matrix.config.image }}
             model: ${{ matrix.config.model }}
@@ -89,7 +89,7 @@ jobs:
             exp-name: "dsr1_8k1k"
             isl: 8192
             osl: 1024
-            max-model-len: 2048
+            max-model-len: 9416
             runner: ${{ matrix.config.runner }}
             image: ${{ matrix.config.image }}
             model: ${{ matrix.config.model }}
@@ -116,7 +116,7 @@ jobs:
         with:
             isl: 8192
             osl: 1024
-            max-model-len: 2048
+            max-model-len: 9416
             runner: ${{ matrix.config.runner }}
             image: ${{ matrix.config.image }}
             model: ${{ matrix.config.model }}
@@ -154,7 +154,7 @@ jobs:
             exp-name: "gptoss_8k1k"
             isl: 8192
             osl: 1024
-            max-model-len: 2048
+            max-model-len: 9416
             runner: ${{ matrix.config.runner }}
             image: ${{ matrix.config.image }}
             model: ${{ matrix.config.model }}
