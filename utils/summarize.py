@@ -21,7 +21,7 @@ if single_node_results:
     print("## Single-Node Results\n")
     single_node_header = '''\
 | Model | Served Model | Hardware | Framework | Precision | ISL | OSL | TP | EP | DP Attention | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
 '''
     print(single_node_header)
 
@@ -56,7 +56,7 @@ if multinode_results:
     print("## Multi-Node Results\n")
     multinode_header = '''\
 | Model | Served Model | Hardware | Framework | Precision | ISL | OSL | Prefill TP | Prefill EP | Prefill DP Attn | Prefill Workers | Prefill GPUs | Decode TP | Decode EP | Decode DP Attn | Decode Workers | Decode GPUs | Conc | TTFT (ms) | TPOT (ms) | Interactivity (tok/s/user) | E2EL (s) | TPUT per GPU | Output TPUT per GPU | Input TPUT per GPU |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |\
 '''
     print(multinode_header)
 
