@@ -1,0 +1,71 @@
+name: PR Comment Sweep
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: "PR-SWEEP-${{ github.event.issue.number }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  parse:
+    # Run only for PR comments, from trusted authors, starting with /sweep
+    if: >-
+      ${{ github.event.issue.pull_request &&
+          startsWith(github.event.comment.body, '/sweep') &&
+          contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association) }}
+    runs-on: ubuntu-latest
+    outputs:
+      pr-number: ${{ steps.parse.outputs.pr-number }}
+      generator-args: ${{ steps.parse.outputs.generator-args }}
+    steps:
+      - name: Derive PR number and parse command
+        id: parse
+        shell: bash
+        env:
+          BODY: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          # Extract first line starting with /sweep
+          cmd_line=$(printf "%s" "$BODY" | awk '/^\/sweep/{print; exit}')
+          if [[ -z "$cmd_line" ]]; then
+            echo "No /sweep command found in comment" >&2
+            exit 1
+          fi
+          cmd_args=${cmd_line#* /sweep}
+          # Handle case when it's exactly '/sweep' (no args)
+          if [[ "$cmd_line" == "/sweep" ]]; then
+            cmd_args=""
+          else
+            cmd_args=${cmd_line#/sweep}
+          fi
+          cmd_args=$(echo "$cmd_args" | xargs || true)
+
+          echo "Command args: $cmd_args"
+
+          echo "generator-args=$cmd_args" >> "$GITHUB_OUTPUT"
+          echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+  execute:
+    needs: parse
+    uses: ./.github/workflows/sweep-executor.yml
+    secrets: inherit
+    with:
+      pr-number: ${{ needs.parse.outputs.pr-number }}
+      generator-args: ${{ needs.parse.outputs.generator-args }}
+
+  note-ignored:
+    # Inform when comment doesn't meet criteria (non-PR or not authorized)
+    if: ${{ !github.event.issue.pull_request ||
+        !startsWith(github.event.comment.body, '/sweep') ||
+        !contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association) }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Comment ignored. Either not on a PR, not a /sweep command, or author not authorized (OWNER/MEMBER/COLLABORATOR required)."
