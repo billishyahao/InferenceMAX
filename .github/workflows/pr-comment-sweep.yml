@@ -1,45 +1,57 @@
-name: PR Comment Sweep
+name: Sweep
 
 on:
+  # PR comment trigger
   issue_comment:
     types: [created]
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: PR number to checkout (refs/pull/<num>/head)
+        required: false
+        type: string
+      generator-args:
+        description: Args passed to generate_sweep_configs.py (omit /sweep)
+        required: false
+        type: string
+  # Push-based example/testing
+  push:
+    branches-ignore:
+      - main
+      - master
 
 concurrency:
-  group: "PR-SWEEP-${{ github.event.issue.number }}"
+  group: ${{ github.event.issue.number && format('PR-SWEEP-{0}', github.event.issue.number) || format('REF-SWEEP-{0}', github.ref_name) }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  parse:
-    # Run only for PR comments, from trusted authors, starting with /sweep
-    if: >-
-      ${{ github.event.issue.pull_request &&
-          startsWith(github.event.comment.body, '/sweep') &&
-          contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association) }}
+  prepare:
     runs-on: ubuntu-latest
     outputs:
-      pr-number: ${{ steps.parse.outputs.pr-number }}
-      generator-args: ${{ steps.parse.outputs.generator-args }}
+      pr-number: ${{ steps.parse.outputs.pr-number || steps.resolve.outputs.pr-number }}
+      generator-args: ${{ steps.parse.outputs.generator-args || steps.resolve.outputs.generator-args }}
     steps:
-      - name: Derive PR number and parse command
+      - name: Parse PR comment (/sweep ...)
         id: parse
+        if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/sweep') && contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
         shell: bash
         env:
           BODY: ${{ github.event.comment.body }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
-
-          # Extract first line starting with /sweep
-          cmd_line=$(printf "%s" "$BODY" | awk '/^\/sweep/{print; exit}')
+          # Allow optional leading whitespace before /sweep
+          cmd_line=$(printf "%s" "$BODY" | awk '/^[[:space:]]*\/sweep/{print; exit}')
           if [[ -z "$cmd_line" ]]; then
             echo "No /sweep command found in comment" >&2
             exit 1
           fi
-          cmd_args=${cmd_line#* /sweep}
-          # Handle case when it's exactly '/sweep' (no args)
+          # Trim leading spaces then strip the /sweep prefix
+          cmd_line=$(echo "$cmd_line" | sed 's/^[[:space:]]*//')
           if [[ "$cmd_line" == "/sweep" ]]; then
             cmd_args=""
           else
@@ -47,24 +59,182 @@ jobs:
           fi
           cmd_args=$(echo "$cmd_args" | xargs || true)
 
-          echo "Command args: $cmd_args"
-
           echo "generator-args=$cmd_args" >> "$GITHUB_OUTPUT"
           echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
-  execute:
-    needs: parse
-    uses: ./.github/workflows/sweep-executor.yml
+      - name: Find PR for this branch (if any)
+        id: find
+        if: ${{ github.event_name != 'issue_comment' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = context.ref.replace('refs/heads/', '');
+            const res = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${branch}` });
+            const num = res.data[0]?.number ? String(res.data[0].number) : '';
+            core.setOutput('pr-number', num);
+
+      - name: Prepare inputs (push/dispatch)
+        id: resolve
+        if: ${{ github.event_name != 'issue_comment' }}
+        shell: bash
+        env:
+          DISPATCH_PR: ${{ github.event.inputs.pr-number }}
+          DISPATCH_ARGS: ${{ github.event.inputs.generator-args }}
+        run: |
+          set -euo pipefail
+          pr_from_branch='${{ steps.find.outputs.pr-number }}'
+          pr_number="${DISPATCH_PR:-}"; if [[ -z "$pr_number" ]]; then pr_number="$pr_from_branch"; fi
+          gen_args="${DISPATCH_ARGS:-}"
+          if [[ -z "$gen_args" ]]; then
+            gen_args='full-sweep --single-node --runner-type h200 --model-prefix dsr1 --seq-lens 1k1k --max-conc 4'
+          fi
+          echo "Resolved PR: $pr_number";
+          echo "Using generator args: $gen_args";
+          echo "pr-number=$pr_number" >> "$GITHUB_OUTPUT"
+          echo "generator-args=$gen_args" >> "$GITHUB_OUTPUT"
+
+  generate:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.pr-number != '' && needs.prepare.outputs.generator-args != '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      search-space-config: ${{ steps.generate.outputs.search-space-config }}
+      is-multinode: ${{ steps.detect.outputs.is-multinode }}
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: refs/pull/${{ needs.prepare.outputs.pr-number }}/head
+
+      - name: Detect node type from args
+        id: detect
+        run: |
+          set -euo pipefail
+          ARGS='${{ needs.prepare.outputs.generator-args }}'
+          if [[ "$ARGS" == *"--multi-node"* ]]; then
+            echo "is-multinode=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-multinode=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate sweep configs
+        id: generate
+        shell: python
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          import json, os, shlex, subprocess, sys
+
+          cmd_args = r'''${{ needs.prepare.outputs.generator-args }}'''
+          script = os.path.join(os.environ['GITHUB_WORKSPACE'], 'utils', 'matrix_logic', 'generate_sweep_configs.py')
+          cfg_amd = os.path.join(os.environ['GITHUB_WORKSPACE'], '.github', 'configs', 'amd-master.yaml')
+          cfg_nv = os.path.join(os.environ['GITHUB_WORKSPACE'], '.github', 'configs', 'nvidia-master.yaml')
+          runners = os.path.join(os.environ['GITHUB_WORKSPACE'], '.github', 'configs', 'runners.yaml')
+
+          subprocess.run([sys.executable, '-m', 'pip', 'install', 'pydantic'], check=True)
+
+          argv = [sys.executable, script]
+          if cmd_args.strip():
+              argv += shlex.split(cmd_args)
+          argv += ['--config-files', cfg_amd, cfg_nv, '--runner-config', runners]
+
+          print('Invoking:', ' '.join(shlex.quote(a) for a in argv))
+          res = subprocess.run(argv, capture_output=True, text=True)
+          if res.returncode != 0:
+              print('Generator failed. stdout:\n', res.stdout)
+              print('stderr:\n', res.stderr, file=sys.stderr)
+              raise SystemExit(res.returncode)
+
+          try:
+              data = json.loads(res.stdout)
+          except Exception as e:
+              print('Failed to parse generator output as JSON:', e, file=sys.stderr)
+              print('Raw output:\n', res.stdout)
+              raise
+
+          print(f"Generated {len(data)} configs")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('search-space-config=' + json.dumps(data) + '\n')
+
+  run-single-node:
+    needs: generate
+    if: ${{ needs.generate.result == 'success' && needs.generate.outputs.search-space-config != '[]' && needs.generate.outputs.is-multinode == 'false' }}
+    uses: ./.github/workflows/benchmark-tmpl.yml
+    name: Sweep (Single-Node)
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.generate.outputs.search-space-config) }}
     secrets: inherit
     with:
-      pr-number: ${{ needs.parse.outputs.pr-number }}
-      generator-args: ${{ needs.parse.outputs.generator-args }}
+      exp-name: ${{ matrix.config.exp-name }}
+      isl: ${{ matrix.config.isl }}
+      osl: ${{ matrix.config.osl }}
+      max-model-len: ${{ matrix.config.max-model-len }}
+      runner: ${{ matrix.config.runner }}
+      image: ${{ matrix.config.image }}
+      model: ${{ matrix.config.model }}
+      model-prefix: ${{ matrix.config.model-prefix }}
+      framework: ${{ matrix.config.framework }}
+      precision: ${{ matrix.config.precision }}
+      tp: ${{ matrix.config.tp }}
+      ep: ${{ matrix.config.ep }}
+      dp-attn: ${{ matrix.config.dp-attn }}
+      conc: ${{ matrix.config.conc }}
+      spec-decoding: ${{ matrix.config.spec-decoding }}
+      disagg: ${{ matrix.config.disagg }}
+
+  run-multi-node:
+    needs: generate
+    if: ${{ needs.generate.result == 'success' && needs.generate.outputs.search-space-config != '[]' && needs.generate.outputs.is-multinode == 'true' }}
+    uses: ./.github/workflows/benchmark-multinode-tmpl.yml
+    name: Sweep (Multi-Node)
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.generate.outputs.search-space-config) }}
+    secrets: inherit
+    with:
+      exp-name: ${{ matrix.config.exp-name }}
+      isl: ${{ matrix.config.isl }}
+      osl: ${{ matrix.config.osl }}
+      max-model-len: ${{ matrix.config.max-model-len }}
+      runner: ${{ matrix.config.runner }}
+      image: ${{ matrix.config.image }}
+      model: ${{ matrix.config.model }}
+      model-prefix: ${{ matrix.config.model-prefix }}
+      framework: ${{ matrix.config.framework }}
+      precision: ${{ matrix.config.precision }}
+      conc-list: ${{ toJson(matrix.config.conc) }}
+      spec-decoding: ${{ matrix.config.spec-decoding }}
+      disagg: ${{ matrix.config.disagg }}
+
+      prefill-num-worker: ${{ matrix.config.prefill.num-worker }}
+      prefill-tp: ${{ matrix.config.prefill.tp }}
+      prefill-ep: ${{ matrix.config.prefill.ep }}
+      prefill-dp-attn: ${{ matrix.config.prefill.dp-attn }}
+      prefill-additional-settings: ${{ toJson(matrix.config.prefill.additional-settings) }}
+
+      decode-num-worker: ${{ matrix.config.decode.num-worker }}
+      decode-tp: ${{ matrix.config.decode.tp }}
+      decode-ep: ${{ matrix.config.decode.ep }}
+      decode-dp-attn: ${{ matrix.config.decode.dp-attn }}
+      decode-additional-settings: ${{ toJson(matrix.config.decode.additional-settings) }}
+
+  collect-results:
+    needs: [run-single-node, run-multi-node]
+    if: ${{ always() && (needs.run-single-node.result == 'success' || needs.run-multi-node.result == 'success') }}
+    uses: ./.github/workflows/collect-results.yml
+    name: Collect Results
+    secrets: inherit
+    with:
+      exp-name: ''
 
   note-ignored:
     # Inform when comment doesn't meet criteria (non-PR or not authorized)
-    if: ${{ !github.event.issue.pull_request ||
-        !startsWith(github.event.comment.body, '/sweep') ||
-        !contains('OWNER,MEMBER,COLLABORATOR', github.event.comment.author_association) }}
+    if: ${{ github.event_name == 'issue_comment' && (!github.event.issue.pull_request || !startsWith(github.event.comment.body, '/sweep') || !contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) }}
     runs-on: ubuntu-latest
     steps:
       - run: |
