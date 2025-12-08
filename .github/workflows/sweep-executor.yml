@@ -9,6 +9,16 @@ on:
       generator-args:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: PR number to checkout (refs/pull/<num>/head)
+        required: true
+        type: string
+      generator-args:
+        description: Args passed to generate_sweep_configs.py (omit /sweep)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -148,4 +158,3 @@ jobs:
     secrets: inherit
     with:
       exp-name: ''
-
