@@ -22,14 +22,7 @@ if [[ $FRAMEWORK == "dynamo-sglang" ]]; then
     fi
     export MODEL_PATH="/mnt/lustre01/models/deepseek-r1-0528"
     export CONFIG_DIR="/mnt/lustre01/artifacts/sglang-configs/1k1k"
-
-    # FIXME: Another workaround for all the different branching
-    # THIS NEEDS TO BE STANDARDIZED ASAP
-    if [ "$ISL" = "1024" ] && [ "$OSL" = "1024" ]; then
-        export SGL_SLURM_JOBS_PATH="dynamo/examples/backends/sglang/slurm_jobs"
-    else
-        export SGL_SLURM_JOBS_PATH="dynamo/components/backends/sglang/slurm_jobs"
-    fi
+    export SGL_SLURM_JOBS_PATH="dynamo/examples/backends/sglang/slurm_jobs"
 else
     SQUASH_FILE="/mnt/lustre01/users/sa-shared/images/$(echo "$IMAGE" | sed 's/[\/:@#]/_/g').sqsh"
     srun --partition=$SLURM_PARTITION --exclusive --time=180 bash -c "enroot import -o $SQUASH_FILE docker://$IMAGE"
