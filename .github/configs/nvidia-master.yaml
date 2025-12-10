@@ -883,7 +883,7 @@ dsr1-fp8-gb200-dynamo-sglang:
         ep: 1
         dp-attn: true
         additional-settings:
-        - "PREFILL_NODES=2"
+        - "PREFILL_NODES=10"
         - "N_ADDITIONAL_FRONTENDS=8"
         - "SCRIPT_MODE=8k1k-max-tpt"
       decode:
