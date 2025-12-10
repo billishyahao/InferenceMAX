@@ -920,6 +920,7 @@ dsr1-fp4-gb200-dynamo-sglang:
         additional-settings:
         - "PREFILL_NODES=1"
         - "N_ADDITIONAL_FRONTENDS=8"
+        - "SCRIPT_MODE=1k1k-low-latency"
       decode:
         num-worker: 2
         tp: 1
@@ -939,6 +940,7 @@ dsr1-fp4-gb200-dynamo-sglang:
         additional-settings:
         - "PREFILL_NODES=1"
         - "N_ADDITIONAL_FRONTENDS=8"
+        - "SCRIPT_MODE=1k1k-middle-curve"
       decode:
         num-worker: 2
         tp: 1
@@ -958,6 +960,7 @@ dsr1-fp4-gb200-dynamo-sglang:
         additional-settings:
         - "PREFILL_NODES=1"
         - "N_ADDITIONAL_FRONTENDS=8"
+        - "SCRIPT_MODE=1k1k-max-tpt"
       decode:
         num-worker: 2
         tp: 1
