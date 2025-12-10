@@ -36,7 +36,6 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             search-space-config: ${{ steps.get-jobs.outputs.search-space-config }}
-        environment: bryan-test
         steps:
             - name: Checkout code (ref)
               if: ${{ inputs.ref && inputs.ref != '' }}
