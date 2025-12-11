@@ -1008,7 +1008,7 @@ dsr1-fp4-gb200-dynamo-sglang:
         additional-settings:
         - "DECODE_NODES=12"
     - spec-decoding: "none"
-      conc-list: [ 1024, 2048, 8192, 10240 ]
+      conc-list: [ 1024, 2048, 8192 ]
       prefill:
         num-worker: 10
         tp: 1
