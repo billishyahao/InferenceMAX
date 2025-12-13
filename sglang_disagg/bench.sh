@@ -15,6 +15,8 @@ chosen_isl=${8:-1024}
 chosen_osl=${9:-1024}
 concurrency_list=${10:-"512x1"}
 chosen_req_rate=${11:-1}
+random_range_ratio=${12:-1}
+num_prompts_multiplier=${13:-10}
 
 IFS='x' read -r -a chosen_concurrencies <<< "$concurrency_list"
 
@@ -86,8 +88,8 @@ run_benchmark_serving \
     --backend openai \
     --input-len ${chosen_isl} \
     --output-len ${chosen_osl} \
-    --random-range-ratio  1 \
-    --num-prompts $(( $max_concurrency * 10)) \
+    --random-range-ratio ${random_range_ratio} \
+    --num-prompts $(( $max_concurrency * $num_prompts_multiplier )) \
     --max-concurrency "$max_concurrency" \
     --result-filename "$export_file" \
     --result-dir /workspace/
