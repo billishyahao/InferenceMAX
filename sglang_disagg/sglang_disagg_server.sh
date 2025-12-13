@@ -92,14 +92,18 @@ python $MOONCAKE_COOKBOOK_PATH/socket_barrier.py \
 
 IFS=',' read -ra IP_ARRAY <<< "$IPADDRS"
 
+# Build prefill arguments dynamically based on xP
 PREFILL_ARGS=""
+for ((i=0; i<xP; i++)); do
+    PREFILL_ARGS="$PREFILL_ARGS --prefill http://${IP_ARRAY[$i]}:8000"
+done
+
+# Build decode arguments dynamically based on yD
 DECODE_ARGS=""
-
-PREFILL_ARGS="http://${IP_ARRAY[0]}:8000"
-DECODE_ARGS="http://${IP_ARRAY[$xP]}:8000"
-
-
-
+for ((i=0; i<yD; i++)); do
+    decode_idx=$((xP + i))
+    DECODE_ARGS="$DECODE_ARGS --decode http://${IP_ARRAY[$decode_idx]}:8000"
+done
 
 PREFILL_PARALELL=$((xP * 8))
 DECODE_PARALELL=$((yD * 8))
@@ -120,8 +124,8 @@ if [ "$NODE_RANK" -eq 0 ]; then
     echo "================================================"
     echo "${host_name}:${host_ip} is Proxy Node and Prefill Node"
     echo "Using prefill config: $PREFILL_MODEL_CONFIG"
-    echo "${PREFILL_ARGS} are Proxy's Prefill"
-    echo "${DECODE_ARGS} are Proxy's Decode"
+    echo "Prefill servers (${xP} nodes): ${PREFILL_ARGS}"
+    echo "Decode servers (${yD} nodes): ${DECODE_ARGS}"
     echo "================================================"
 
     set -x 
@@ -129,9 +133,8 @@ if [ "$NODE_RANK" -eq 0 ]; then
     --pd-disaggregation \
     --mini-lb \
     --port 30000 \
-    --prefill ${PREFILL_ARGS} \
-    --decode http://10.235.192.86:8000 \
-    --decode http://10.235.192.84:8000 \
+    ${PREFILL_ARGS} \
+    ${DECODE_ARGS} \
     2>&1 | tee /run_logs/${SLURM_JOB_ID}/proxy_NODE${NODE_RANK}.log >/dev/null &
     set +x
     
