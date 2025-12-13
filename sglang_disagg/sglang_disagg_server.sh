@@ -264,7 +264,7 @@ if [ "$NODE_RANK" -eq 0 ]; then
     cd /opt/mooncake-cookbook
     # todo: put bench.sh in sglang folder
     # n_prefill n_decode prefill_gpus decode_gpus model_path model_name log_path isl osl concurrency_list req_rate random_range_ratio num_prompts_multiplier
-    bash /opt/mooncake-cookbook/bench.sh 1 1 8 8 $MODEL_PATH $MODEL_NAME /run_logs/${SLURM_JOB_ID} ${BENCH_INPUT_LEN} ${BENCH_OUTPUT_LEN} "${BENCH_MAX_CONCURRENCY}x1" 1 ${BENCH_RANDOM_RANGE_RATIO} ${BENCH_NUM_PROMPTS_MULTIPLIER}
+    bash /opt/mooncake-cookbook/bench.sh 1 1 8 8 $MODEL_PATH $MODEL_NAME /run_logs/${SLURM_JOB_ID} ${BENCH_INPUT_LEN} ${BENCH_OUTPUT_LEN} "${BENCH_MAX_CONCURRENCY}" 1 ${BENCH_RANDOM_RANGE_RATIO} ${BENCH_NUM_PROMPTS_MULTIPLIER}
  
     echo "Killing the proxy server and prefill server"
     kill $proxy_pid

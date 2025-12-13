@@ -20,7 +20,9 @@ num_prompts_multiplier=${13:-10}
 
 IFS='x' read -r -a chosen_concurrencies <<< "$concurrency_list"
 
-echo "Config ${chosen_isl}; ${chosen_osl}; ${chosen_concurrencies[@]}; ${chosen_req_rate}"
+# echo "Config ${chosen_isl}; ${chosen_osl}; ${chosen_concurrencies[@]}; ${chosen_req_rate}"
+# TODO only useing the first concurrency for now
+echo "Config ${chosen_isl}; ${chosen_osl}; ${chosen_concurrencies[0]}; ${chosen_req_rate}"
 
 head_node="localhost"
 head_port="30000"
@@ -68,7 +70,7 @@ mkdir -p $profile_folder
 # source "$(dirname "$0")/benchmark_lib.sh"
 source /apps/mingzliu/InferenceMAX_rocm/sglang_disagg/benchmark_lib.sh
 
-max_concurrency=512
+max_concurrency=${chosen_concurrencies[0]}
 export_file="${profile_folder}/concurrency_${max_concurrency}_req_rate_${chosen_req_rate}.json"
 
 echo "=== debug info ==="
@@ -80,7 +82,7 @@ echo "MODEL_PATH: $MODEL_PATH"
 echo "head_port: $head_port"
 echo "chosen_isl: $chosen_isl"
 echo "chosen_osl: $chosen_osl"
-echo "export_file 将设置为: $export_file"
+echo "export_file: $export_file"
 
 run_benchmark_serving \
     --model  ${MODEL_PATH} \
