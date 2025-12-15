@@ -78,7 +78,6 @@ else
     decode_max_running_requests=256
 fi
 
-decode_cuda_graph_bs=($(seq 1 64))
 declare -A MODEL_DECODE_CONFIGS=(
     ["DeepSeek-R1"]="--mem-fraction-static 0.6 --max-running-requests ${decode_max_running_requests} --cuda-graph-bs ${decode_cuda_graph_bs[*]} --prefill-round-robin-balance"
 )
