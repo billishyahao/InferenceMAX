@@ -9,7 +9,7 @@
 MASTER_ADDR="${MASTER_ADDR:-localhost}"
 MASTER_PORT="${MASTER_PORT:-23731}"
 NODE_RANK="${NODE_RANK:-0}"
-MODEL_PATH=$MODEL_PATH
+MODEL_DIR="${MODEL_DIR:-}"
 MODEL_NAME="${MODEL_NAME:-}"
 xP="${xP:-1}"
 yD="${yD:-1}"
@@ -35,7 +35,7 @@ BENCH_MAX_CONCURRENCY="${BENCH_MAX_CONCURRENCY:-512}"
 # Dependencies and Environment Setup
 # =============================================================================
 
-source $MOONCAKE_COOKBOOK_PATH/set_env_vars.sh
+source $SGL_WS_PATH/set_env_vars.sh
 
 host_ip=$(ip route get 1.1.1.1 | awk '/src/ {print $7}')
 host_name=$(hostname)
@@ -172,7 +172,7 @@ fi
 # =============================================================================
 
 echo "Waiting at the container creation barrier on $host_name"
-python $MOONCAKE_COOKBOOK_PATH/socket_barrier.py \
+python $SGL_WS_PATH/socket_barrier.py \
     --local-ip ${host_ip} \
     --local-port 5000 \
     --enable-port \
@@ -237,7 +237,7 @@ if [ "$NODE_RANK" -eq 0 ]; then
     
     # start the head prefill server
     PREFILL_CMD="python3 -m sglang.launch_server \
-        --model-path $MODEL_PATH/$MODEL_NAME \
+        --model-path $MODEL_DIR/$MODEL_NAME \
         --disaggregation-mode prefill \
         --disaggregation-ib-device ${IBDEVICES} \
         --host 0.0.0.0 \
@@ -253,17 +253,17 @@ if [ "$NODE_RANK" -eq 0 ]; then
     prefill0_pid=$!
     
     echo "Waiting for all prefill and decode servers to be up . . ."
-    python $MOONCAKE_COOKBOOK_PATH/socket_barrier.py \
+    python $SGL_WS_PATH/socket_barrier.py \
         --node-ips ${IPADDRS} \
         --node-ports 8000
 
     echo "Proxy Server Ready for benchmarking on ${host_name}:${host_ip}"
 
     echo "Benchmarking on ${host_name}:${host_ip}"
-    cd /opt/mooncake-cookbook
+    cd /sglang_disagg
     # todo: put bench.sh in sglang folder
-    # n_prefill n_decode prefill_gpus decode_gpus model_path model_name log_path isl osl concurrency_list req_rate random_range_ratio num_prompts_multiplier
-    bash /opt/mooncake-cookbook/bench.sh 1 1 8 8 $MODEL_PATH $MODEL_NAME /run_logs/${SLURM_JOB_ID} ${BENCH_INPUT_LEN} ${BENCH_OUTPUT_LEN} "${BENCH_MAX_CONCURRENCY}" 1 ${BENCH_RANDOM_RANGE_RATIO} ${BENCH_NUM_PROMPTS_MULTIPLIER}
+    # n_prefill n_decode prefill_gpus decode_gpus model_dir model_name log_path isl osl concurrency_list req_rate random_range_ratio num_prompts_multiplier
+    bash /sglang_disagg/bench.sh 1 1 8 8 $MODEL_DIR $MODEL_NAME /run_logs/${SLURM_JOB_ID} ${BENCH_INPUT_LEN} ${BENCH_OUTPUT_LEN} "${BENCH_MAX_CONCURRENCY}" 1 ${BENCH_RANDOM_RANGE_RATIO} ${BENCH_NUM_PROMPTS_MULTIPLIER}
  
     echo "Killing the proxy server and prefill server"
     kill $proxy_pid
@@ -275,7 +275,7 @@ elif [ "$NODE_RANK" -gt 0 ] && [ "$NODE_RANK" -lt "$xP" ]; then
     echo "Prefill parallelism: TP=${PREFILL_TP_SIZE}, EP enabled: ${PREFILL_ENABLE_EP}, DP enabled: ${PREFILL_ENABLE_DP}"
 
     PREFILL_CMD="python3 -m sglang.launch_server \
-        --model-path $MODEL_PATH/${MODEL_NAME} \
+        --model-path $MODEL_DIR/${MODEL_NAME} \
         --disaggregation-mode prefill \
         --disaggregation-ib-device ${IBDEVICES} \
         --host 0.0.0.0 \
@@ -292,12 +292,12 @@ elif [ "$NODE_RANK" -gt 0 ] && [ "$NODE_RANK" -lt "$xP" ]; then
     prefill_pid=$!
 
     echo "Waiting for proxy server to be up..."
-    python $MOONCAKE_COOKBOOK_PATH/socket_barrier.py \
+    python $SGL_WS_PATH/socket_barrier.py \
         --node-ips ${MASTER_ADDR} \
         --node-ports 30000
     
     echo "Waiting until proxy server closes..."
-    python $MOONCAKE_COOKBOOK_PATH/socket_wait.py \
+    python $SGL_WS_PATH/socket_wait.py \
         --remote-ip ${MASTER_ADDR} \
         --remote-port 30000
 
@@ -312,7 +312,7 @@ else
     echo "Decode parallelism: TP=${DECODE_TP_SIZE}, EP enabled: ${DECODE_ENABLE_EP}, DP enabled: ${DECODE_ENABLE_DP}"
     
     DECODE_CMD="python3 -m sglang.launch_server \
-        --model-path ${MODEL_PATH}/${MODEL_NAME} \
+        --model-path ${MODEL_DIR}/${MODEL_NAME} \
         --disaggregation-mode decode \
         --disaggregation-ib-device ${IBDEVICES} \
         --host 0.0.0.0 \
@@ -328,12 +328,12 @@ else
     set +x 
 
     echo "Waiting for proxy server to be up..."
-    python $MOONCAKE_COOKBOOK_PATH/socket_barrier.py \
+    python $SGL_WS_PATH/socket_barrier.py \
         --node-ips ${MASTER_ADDR} \
         --node-ports 30000
     
     echo "Waiting until proxy server closes..."
-    python $MOONCAKE_COOKBOOK_PATH/socket_wait.py \
+    python $SGL_WS_PATH/socket_wait.py \
         --remote-ip ${MASTER_ADDR} \
         --remote-port 30000
 

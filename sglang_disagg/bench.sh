@@ -67,8 +67,7 @@ mkdir -p $profile_folder
 #     echo "-----------------------------------------"
 # done
 
-# source "$(dirname "$0")/benchmark_lib.sh"
-source /apps/mingzliu/InferenceMAX_rocm/sglang_disagg/benchmark_lib.sh
+source "$(dirname "$0")/benchmark_lib.sh"
 
 max_concurrency=${chosen_concurrencies[0]}
 export_file="${profile_folder}/concurrency_${max_concurrency}_req_rate_${chosen_req_rate}.json"

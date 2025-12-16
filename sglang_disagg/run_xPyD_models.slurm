@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=2p2d_bench-serving    # Specify a custom string for your slurm batch job
+#SBATCH --job-name=1p2d_bench-serving    # Specify a custom string for your slurm batch job
 #SBATCH -N 3            # CHECK this to be right in batch jobs 
 #SBATCH -n 3          # CHECK this to be right in batch jobs
 #SBATCH --ntasks-per-node=1
@@ -43,6 +43,9 @@ else
     exit 1
 fi
 
+
+
+# public repo url: rocm/sgl-dev:sglang-0.5.6.post1-rocm711-mi35x-mori-1212-3
 export DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-rocm/pytorch-private:sglang-0.5.6.post1-rocm711-mi35x-mori-1212-3}"
 if test -z "${DOCKER_IMAGE_NAME}"; then
   echo "Error: DOCKER_IMAGE_NAME is not set or empty."
@@ -50,8 +53,8 @@ if test -z "${DOCKER_IMAGE_NAME}"; then
 fi
 
 # Set current directory to be REPO directory with all relevant scripts
-export MOONCAKE_REPO_DIR=$(pwd)
-LOG_PATH="${LOG_PATH:-${MOONCAKE_REPO_DIR}/log}"
+export DI_REPO_DIR=$(pwd)
+LOG_PATH="${LOG_PATH:-${DI_REPO_DIR}/log}"
 
 xP="${xP:-1}" #-> Number of Prefill Servers
 yD="${yD:-1}" #-> Number of Decode Servers
@@ -72,7 +75,6 @@ BENCH_NUM_PROMPTS_MULTIPLIER="${BENCH_NUM_PROMPTS_MULTIPLIER:-10}"
 BENCH_MAX_CONCURRENCY="${BENCH_MAX_CONCURRENCY:-512}"
 
 MODEL_NAME="${MODEL_NAME:-None}"
-#MODEL_DIR="${MODEL_DIR:-"/shared-inference/models_blog/"}"
 MODEL_DIR="${MODEL_DIR:-"/apps/data/models"}"
 
 validate_model_name() {
@@ -103,8 +105,6 @@ validate_model_name "${MODEL_NAME}"
 # ------------------------
 # Model path validation and selection across all nodes
 # ------------------------
-ORIGINAL_MODEL_PATH="/shared-inference/models_blog/${MODEL_NAME}"
-
 echo "Looking for model: $MODEL_NAME"
 echo "Checking model availability across all allocated nodes..."
 
@@ -144,26 +144,14 @@ check_model_path() {
     fi
 }
 
-# Check /mnt/m2m_nobackup/models_blog first
-MODEL_PATH_1="/mnt/m2m_nobackup/models_blog/$MODEL_NAME"
-if check_model_path "$MODEL_PATH_1" "/mnt/m2m_nobackup/models_blog"; then
-    MODEL_PATH="$MODEL_PATH_1"
-    echo ""
-    echo "✓ Selected MODEL_PATH: $MODEL_PATH (available on all nodes)"
-# Check /shared-inference/models_blog
-elif check_model_path "/shared-inference/models_blog/$MODEL_NAME" "/shared-inference/models_blog"; then
-    MODEL_PATH="/shared-inference/models_blog/$MODEL_NAME"
-    echo ""
-    echo "✓ Selected MODEL_PATH: $MODEL_PATH (available on all nodes)"
-elif check_model_path "$MODEL_DIR/$MODEL_NAME" "$MODEL_DIR"; then
+# Check model weights exist on "$MODEL_DIR/$MODEL_NAME"
+if check_model_path "$MODEL_DIR/$MODEL_NAME" "$MODEL_DIR"; then
     MODEL_PATH="$MODEL_DIR/$MODEL_NAME"
     echo ""
     echo "✓ Selected MODEL_PATH: $MODEL_PATH (available on all nodes)"
 else
     echo ""
-    echo "✗ FATAL ERROR: Model '$MODEL_NAME' not found on ALL allocated nodes in either:"
-    echo "  - /mnt/m2m_nobackup/models_blog/$MODEL_NAME"
-    echo "  - /shared-inference/models_blog/$MODEL_NAME"
+    echo "✗ FATAL ERROR: Model '$MODEL_NAME' not found on ALL allocated nodes in the following:"
     echo "  - $MODEL_DIR/$MODEL_NAME"
     echo ""
     echo "Model must be accessible from all nodes for distributed execution."
@@ -206,7 +194,7 @@ export SLURM_NODELIST="$NEW_SLURM_NODELIST"
 
 # Keep other SLURM variables as they were or set defaults
 export SLURM_TASKS_PER_NODE="1(x$NUM_NODES)"
-export SLURM_SUBMIT_DIR="${SLURM_SUBMIT_DIR:-/home/ravgupta}"
+export SLURM_SUBMIT_DIR="${SLURM_SUBMIT_DIR:-/home/bill}"
 export SLURM_CLUSTER_NAME="${SLURM_CLUSTER_NAME:-m2m}"
 export SLURM_JOB_CPUS_PER_NODE="${SLURM_JOB_CPUS_PER_NODE}"
 export SLURM_JOB_PARTITION="${SLURM_JOB_PARTITION:-amd-rccl}"
@@ -264,8 +252,7 @@ done
 
 echo "Selected node IPs: ${IPS[*]}" | sed 's/ /,/g'
 
-MOONCAKE_COOKBOOK_PATH="/opt/mooncake-cookbook"
-BENCHMARK_FILE="${BENCHMARK_FILE:-$MOONCAKE_COOKBOOK_PATH/scripts/sglang_disagg/run_xPyD_models.slurm}"
+SGL_WS_PATH="/sglang_disagg"
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
 NNODES=$NUM_NODES
@@ -274,7 +261,7 @@ echo "MASTER_NODE is ${MASTER_NODE}"
 echo "MASTER_ADDR is ${MASTER_ADDR}"
 echo "MASTER_PORT is ${MASTER_PORT}"
 echo "NNODES is ${NNODES}"
-echo "REPO Directory is ${MOONCAKE_REPO_DIR}"
+echo "REPO Directory is ${DI_REPO_DIR}"
 echo "USER_NAME is ${USER_NAME}"
 
 if [ ! -d "$LOG_PATH" ]; then
@@ -286,12 +273,13 @@ else
 fi
 
 export LOG_PATH=$LOG_PATH
-export MOONCAKE_REPO_DIR=$MOONCAKE_REPO_DIR
-export MOONCAKE_COOKBOOK_PATH=$MOONCAKE_COOKBOOK_PATH
+export DI_REPO_DIR=$DI_REPO_DIR
+export SGL_WS_PATH=$SGL_WS_PATH
 export NNODES=$NNODES
 export MASTER_ADDR=$MASTER_ADDR
 export MASTER_PORT=$MASTER_PORT
 export MODEL_PATH=$MODEL_PATH
+export MODEL_DIR=$MODEL_DIR
 export xP=$xP
 export yD=$yD
 export MODEL_NAME=$MODEL_NAME
@@ -309,13 +297,14 @@ export BENCH_RANDOM_RANGE_RATIO=$BENCH_RANDOM_RANGE_RATIO
 export BENCH_NUM_PROMPTS_MULTIPLIER=$BENCH_NUM_PROMPTS_MULTIPLIER
 export BENCH_MAX_CONCURRENCY=$BENCH_MAX_CONCURRENCY
 
-export DOCKER_CONT_NAME="container_mingzhi_sbatch_${MODEL_NAME}_${SLURM_JOB_ID}"
-export RUN_FILE_FULL="$MOONCAKE_COOKBOOK_PATH/${RUN_FILE}"
+export DOCKER_CONT_NAME="container_sbatch_${USER_NAME}_${MODEL_NAME}_${SLURM_JOB_ID}"
+export RUN_FILE_FULL="$SGL_WS_PATH/${RUN_FILE}"
 
 # Use only the selected nodes for srun execution
 SELECTED_NODELIST_SRUN=$(echo "$SELECTED_NODES" | paste -sd,)
 
 # sudo docker ps -q | xargs --no-run-if-empty sudo docker stop;
+
 srun --nodelist="$SELECTED_NODELIST_SRUN" bash -c '
 echo "Rank $SLURM_PROCID on $(hostname)";
 sudo docker run --rm \
@@ -328,24 +317,22 @@ sudo docker run --rm \
     --cap-add SYS_PTRACE \
     --security-opt seccomp=unconfined \
     --privileged \
-    -v /apps/data/models:/shared-inference \
+    -v ${MODEL_DIR}:/models \
     -v $HOME/.ssh:/root/.ssh \
     --shm-size 128G \
     -v ${LOG_PATH}:/run_logs \
-    -v $MOONCAKE_REPO_DIR:$MOONCAKE_COOKBOOK_PATH \
-    -v /apps:/apps \
+    -v $DI_REPO_DIR:$SGL_WS_PATH \
     -e SLURM_JOB_ID=$SLURM_JOB_ID \
     -e SLURM_JOB_NODELIST=$SLURM_JOB_NODELIST \
     -e NNODES=$NNODES \
-    -e NODE_RANK=$SLURM_PROCID \
+    -e NODE_RANK=$SLURM_PROCID  \
     -e MASTER_ADDR=$MASTER_ADDR \
     -e MASTER_PORT=$MASTER_PORT \
-    -e MODEL_PATH=/shared-inference \
-    -e MOONCAKE_COOKBOOK_PATH=$MOONCAKE_COOKBOOK_PATH \
+    -e MODEL_DIR=/models    \
+    -e SGL_WS_PATH=$SGL_WS_PATH \
     -e xP=$xP \
     -e yD=$yD \
     -e MODEL_NAME=$MODEL_NAME \
-    -e BENCHMARK_FILE=$BENCHMARK_FILE \
     -e IPADDRS=$IPADDRS \
     -e PREFILL_TP_SIZE=$PREFILL_TP_SIZE \
     -e PREFILL_ENABLE_EP=$PREFILL_ENABLE_EP \
